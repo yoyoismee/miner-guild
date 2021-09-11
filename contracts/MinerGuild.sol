@@ -83,7 +83,8 @@ contract MinerGuild is Ownable, ERC1155Receiver, ReentrancyGuard {
         return gemContract.gems(kind);
     }
 
-    function nonce() public view returns (uint256) {
+    function nonce(address notInUse) public view returns (uint256) {
+        // mimic main gem interface. but overwrite reuslt
         return gemContract.nonce(address(this));
     }
 
@@ -102,7 +103,7 @@ contract MinerGuild is Ownable, ERC1155Receiver, ReentrancyGuard {
                 gemsMap[kind].wrapAddress,
                 kind,
                 gemContract.balanceOf(address(this), kind),
-                "0x"
+                ""
             );
             // give some bonus for the lucky miner
             userNewShare += gemsMap[kind].bonus;
