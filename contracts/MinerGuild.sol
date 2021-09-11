@@ -43,7 +43,7 @@ contract MinerGuild is Ownable {
     }
     IGemExtended gemContract =
         IGemExtended(0x342EbF0A5ceC4404CcFF73a40f9c30288Fc72611);
-    mapping(uint256 => gem) gemsMap;
+    mapping(uint256 => gem) public gemsMap;
 
     constructor() {}
 
