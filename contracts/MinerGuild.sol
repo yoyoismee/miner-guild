@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "contracts/HPtoken.sol";
-import "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
+import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Receiver.sol";
 import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 
 // @dev extended Gem interface.
@@ -33,7 +33,7 @@ interface IGemExtended is IERC1155 {
 }
 
 // @dev mining pool contract design to be able to mine seems lessly.
-contract MinerGuild is Ownable {
+contract MinerGuild is Ownable, ERC1155Receiver, ReentrancyGuard {
     struct gem {
         bool exist;
         uint256 kind;
@@ -44,6 +44,7 @@ contract MinerGuild is Ownable {
     IGemExtended gemContract =
         IGemExtended(0x342EbF0A5ceC4404CcFF73a40f9c30288Fc72611);
     mapping(uint256 => gem) public gemsMap;
+    mapping(uint256 => bool) usedSalt;
 
     constructor() {}
 
@@ -87,6 +88,8 @@ contract MinerGuild is Ownable {
     }
 
     function mine(uint256 kind, uint256 salt) public {
+        require(!usedSalt[salt], "salt used");
+        usedSalt[salt] = true; // YOLO - salt collision on different round?!? nah let's save gas
         uint256 userNewShare = 0;
         uint256 l = gemContract.luck(kind, salt);
         (, , , uint256 diff, , , , , ) = gemContract.gems(kind);
@@ -108,7 +111,7 @@ contract MinerGuild is Ownable {
         gemsMap[kind].hptoken.mint(msg.sender, userNewShare);
     }
 
-    function withdraw(uint256 kind, uint256 amount) public {
+    function withdraw(uint256 kind, uint256 amount) public nonReentrant {
         // YOLO let's burn - no need for approval!!
         IERC20 wrappedGem = IERC20(gemsMap[kind].wrapAddress);
         uint256 totalShare = gemsMap[kind].hptoken.totalSupply();
@@ -116,5 +119,27 @@ contract MinerGuild is Ownable {
         uint256 toRedreem = (amount * vaultValue) / totalShare;
         wrappedGem.transfer(msg.sender, toRedreem);
         gemsMap[kind].hptoken.burn(msg.sender, amount);
+    }
+
+    /// @dev On receiving the GEMs, this contract mints wrapped GEMs for the sender.
+    function onERC1155Received(
+        address operator,
+        address from,
+        uint256 id,
+        uint256 value,
+        bytes calldata data
+    ) external override nonReentrant returns (bytes4) {
+        // YOLO
+        return this.onERC1155Received.selector;
+    }
+
+    function onERC1155BatchReceived(
+        address operator,
+        address from,
+        uint256[] calldata ids,
+        uint256[] calldata values,
+        bytes calldata data
+    ) external override returns (bytes4) {
+        revert("not supported");
     }
 }
